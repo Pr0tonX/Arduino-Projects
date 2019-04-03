@@ -31,11 +31,6 @@
 #include <ControlDelay.h>
 #include <mozzi_midi.h>
 #include <mozzi_fixmath.h>
-#include <mozzi_midi.h>
-#include <mozzi_fixmath.h>
-//#include <ADC.h>  // Teensy 3.1 uncomment this line and install https://github.com/pedvide/ADC
-#include <MozziGuts.h>
-#include <Line.h>
 
 #define INPUT_PIN 0 // analog control input: tone
 const char VOL_PIN = 2 ;//analog control input : volume
@@ -51,17 +46,11 @@ Oscil <SIN2048_NUM_CELLS, AUDIO_RATE> aSin1(SIN2048_DATA);
 Oscil <SIN2048_NUM_CELLS, AUDIO_RATE> aSin2(SIN2048_DATA);
 Oscil <SIN2048_NUM_CELLS, AUDIO_RATE> aSin3(SIN2048_DATA);
 
-// audio oscillator
-Oscil<TRIANGLE_VALVE_2048_NUM_CELLS, AUDIO_RATE> aSig(TRIANGLE_VALVE_2048_DATA);
-// control oscillator for tremelo
-Oscil<SIN2048_NUM_CELLS, CONTROL_RATE> kTremelo(SIN2048_DATA);
-// a line to interpolate control tremolo at audio rate
-Line <unsigned int> aGain;
-
 int pValue ;
+byte volume;
 
 #define CONTROL_RATE 64 // powers of 2 please
-ControlDelay <128, int> kDelay; // 2seconds
+ControlDelay <256, int> kDelay; // 2seconds
 
 // use: RollingAverage <number_type, how_many_to_average> myThing
 RollingAverage <int, 32> kAverage; // how_many_to_average has to be power of 2
@@ -69,9 +58,7 @@ int averaged;
 
 
 void setup() {
-  Serial.begin(115200);// set up the Serial output so we can look at the piezo values // set up the Serial output so we can look at the analog levels
-  aSig.setFreq(mtof(65.f));
-  kTremelo.setFreq(5.5f);
+ // Serial.begin(115200);// set up the Serial output so we can look at the piezo values // set up the Serial output so we can look at the analog levels
   kDelay.set(echo_cells_1);
 
   startMozzi(CONTROL_RATE);
@@ -80,9 +67,17 @@ void setup() {
 void updateControl() {
   ////////////////// VOLUME ///////////////////////////////
   pValue = mozziAnalogRead(VOL_PIN); // value is 0-600 ~
- Serial.print("value : ");
- Serial.println( pValue);
+ //Serial.print("value : ");
+ //Serial.println( pValue);
 
+  // map it to an 8 bit volume range for efficient calculations in updateAudio
+  //volume = map (pValue, 0, 1023, 255, 0);  // 10 bits (0->1023) shifted right by 2 bits to give 8 bits (0->255) 
+  volume =255 -(pValue >>2);
+/*  if (volume > 100) volume = 100;
+  if (volume < 0)volume = 0; */
+//  Serial.print("volume = ");
+  //Serial.println(volume);
+  
   ////////////////////////// TONE //////////////////////
 
   int bumpy_input = mozziAnalogRead(INPUT_PIN);
@@ -91,22 +86,15 @@ void updateControl() {
   aSin1.setFreq(kDelay.next(averaged));
   aSin2.setFreq(kDelay.read(echo_cells_2));
   aSin3.setFreq(kDelay.read(echo_cells_3));
-
-   // gain shifted up to give enough range for line's internal steps
-  int in = mozziAnalogRead(VOL_PIN);
-  Serial.println(in);
-   unsigned int gain = in << 4 ;
-   aGain.set(gain, AUDIO_RATE / CONTROL_RATE); // divide of literals should get optimised away
-
 }
 
 int updateAudio() {
-  return (int)((long)((long)((
-    (((int)aSin0.next()*pValue)>>8) + 
-    ((aSin1.next()*pValue)>>8) + 
-    (((aSin2.next() >> 1)*pValue)>>8) + 
-    (((aSin3.next() >> 2)*pValue)>>8) 
-    )>> 3) * aGain.next()) >> 16); ;
+  return ((int)((
+    (((int)aSin0.next()) + 
+    ((aSin1.next()) + 
+    (((aSin2.next() >> 1))) + 
+    (((aSin3.next() >> 2))) 
+    )>> 3) *volume ) >>8)) ;
 }
 
 
