@@ -61,34 +61,34 @@ ControlDelay <256, int> kDelay; // 2seconds
 RollingAverage <int, 32> kAverage; // how_many_to_average has to be power of 2
 int averaged;
 
-
-#define LDR_PIN 2
 #define NUM_VOICES 8
 #define THRESHOLD 10
 // notes to play depending on whether note reading increases or decreases
 float upnotes[NUM_VOICES] = {
-  mtof(62.f),mtof(64.f),mtof(70.f),mtof(72.f),mtof(79.f),mtof(81.f), mtof(86.f), mtof(88.f)};
+  mtof(62.f), mtof(64.f), mtof(70.f), mtof(72.f), mtof(79.f), mtof(81.f), mtof(86.f), mtof(88.f)
+};
 
 float downnotes[NUM_VOICES] = {
-  mtof(64.f),mtof(65.f),mtof(88.f),mtof(72.f),mtof(79.f),mtof(84.f),mtof(86.f),mtof(89.f)};
-  
+  mtof(64.f), mtof(65.f), mtof(88.f), mtof(72.f), mtof(79.f), mtof(84.f), mtof(86.f), mtof(89.f)
+};
+
 
 
 void setup() {
- // Serial.begin(115200);// set up the Serial output so we can look at the piezo values // set up the Serial output so we can look at the analog levels
+  // Serial.begin(115200);// set up the Serial output so we can look at the piezo values // set up the Serial output so we can look at the analog levels
   kDelay.set(echo_cells_1);
  // Serial.begin(9600);
   startMozzi(CONTROL_RATE);
 }
-  
+
 // returns freq
-int noteToFreq(char oscil_num, int note){
+int noteToFreq(char oscil_num, int note) {
   static int previous_note;
   int freq;
-  if (note>previous_note){
+  if (note > previous_note) {
     freq = upnotes[oscil_num];
   } else {
-     freq = downnotes[oscil_num];
+    freq = downnotes[oscil_num];
   }
   previous_note = note;
   return freq;
@@ -96,23 +96,28 @@ int noteToFreq(char oscil_num, int note){
 
 
 void updateControl() {
-   static float previous_pulse_freq;   
+  static float previous_pulse_freq;
 
   ////////////////// PULSE ///////////////////////////////
   int pulse = mozziAnalogRead(pulse_PIN); // value is 0-600 ~
-    int note = mozziAnalogRead(note_PIN); 
+  int note = mozziAnalogRead(note_PIN);
+ // Serial.print(pulse);
+ // Serial.print("         ");
+ // Serial.println(note);
 
 
 
   // map pulse reading to volume pulse frequency
-  float pulse_freq = (float)pulse/256;
+  float pulse_freq = ((float)pulse / 256);
+  //Serial.print(pulse, "    ");
+  //Serial.println(pulse_freq);
   previous_pulse_freq = pulse_freq;
   kVol0.setFreq(pulse_freq);
-  if(abs(v0)<THRESHOLD) aCos0.setFreq(noteToFreq(0,note));
+  // aCos0.setFreq(noteToFreq(0,note));
 
   v0 = kVol0.next();
   //Serial.println(v0);
-  
+
   ////////////////////////// TONE //////////////////////
 
   averaged = kAverage.next(note);
@@ -123,8 +128,8 @@ void updateControl() {
 }
 
 int updateAudio() {
- return v0 / 16 * ((int)aSin0.next()+aSin1.next()+(aSin2.next()>>1)
-    +(aSin3.next()>>2)) >> 6;
+  return v0 / 8 * ((int)aSin0.next() + aSin1.next() + (aSin2.next() >> 1)
+                    + (aSin3.next() >> 2)) >> 5;
 }
 
 
