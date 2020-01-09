@@ -1,4 +1,5 @@
 #include <Servo.h> 
+#include <ADXL345.h>
 
 // ARM PINS
 #define ENA 5
@@ -14,6 +15,8 @@
 #define stopservo_left 9
 #define stopservo_right 10
 #define demilunePIN 11
+
+ADXL345 accel;
 
 Servo demilune;
 
@@ -39,13 +42,18 @@ void setup() {
   
   demilune.attach(demilunePIN);
 
-  demilune.write(0);
+  //demilune.write(0);
+
+  accel.powerOn();
 
 } 
 
 void loop() {
 
    d_move();
+
+   int x, y, z;
+   accel.readXYZ(&x, &y, &z);
 
    a_rotateRight();
 
@@ -96,9 +104,9 @@ void d_down(){
 //demilune
 void dm_rotate(){
   Serial.println("demilune is moving");
-  demilune.write(20);
-  delay(500);
   demilune.write(0);
+  delay(500);
+  demilune.write(20);
   Serial.println("coming in initial position");
   Serial.println("la graine est en train de tomber");
   delay(1000);
